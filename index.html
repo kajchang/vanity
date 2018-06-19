@@ -1,0 +1,87 @@
+<html lang="en">
+   <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <link rel="stylesheet" type="text/css" href="styles/main.css">
+      <script src="scripts/keythereum.min.js"></script>
+   </head>
+   <body>
+      <div id="container">
+         <h1> Ethereum Vanity Address Generator </h1>
+         <h3> "the longer the desired string is, the longer it will take" - the mathman </h3>
+         <label for= "desiredphrase" class="col-lg-2 control-label">make sure it is hexadecimal (0-9, a-f) </label>
+         <input type="text" id="desiredphrase"></input>
+         <button onclick="getvanity()">Start Mining</button>
+         <div id="response"></div>
+         <div id="secondaryresponse"></div>
+      </div>
+      <script type="text/javascript">
+         myWorker = new Worker('scripts/vanityminer.js');
+         
+         const hexadecimal = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e', 'f'];
+         function round(number, precision) {
+         			var shift = function (number, precision, reverseShift) {
+           		if (reverseShift) {
+             			precision = -precision;
+           		}  
+           		var numArray = ("" + number).split("e");
+           		return +(numArray[0] + "e" + (numArray[1] ? (+numArray[1] + precision) : precision));
+         			};
+         			return shift(Math.round(shift(number, precision, false)), precision, true);
+         }
+         
+         function getvanity() {
+         	var notHex = false;
+         	
+         	var desiredphrase=document.getElementById('desiredphrase').value.toLowerCase();
+         	for (i=0;i<desiredphrase.length;i++) {
+         	if (hexadecimal.indexOf(desiredphrase[i]) < 0) {
+         		document.getElementById('response').innerHTML = "<br>that's not in hexadecimal ⬆️ 🤦‍";
+         		notHex = true;
+         		myWorker.terminate();
+         		document.getElementById('secondaryresponse').innerHTML = ''
+         		}
+         	}
+         	if (!notHex) {
+         		myWorker.terminate();
+         		myWorker = new Worker('scripts/vanityminer.js');
+         		myWorker.postMessage(desiredphrase);
+         		document.getElementById('response').innerHTML = '<img src="https://d85ecz8votkqa.cloudfront.net/images/loading.gif" width="150" height="150" frameBorder="0"></img><br><br>Estimated Time Needed: ~ ' + parseTime(Math.pow(15, desiredphrase.length)/800);
+         		myWorker.onmessage = function (data) {
+         			if (data.data[0]!='ADDRS') {
+         			document.getElementById('response').innerHTML = "<br>Address: 0x" + data.data[0] + "<br><br> Private Key: " + data.data[1] + "<br><br>Mined Addresses: " + numberWithCommas(data.data[2]) + "<br><br>Time Elapsed :  " + parseTime(parseInt(data.data[3])/1000) + "<br><br>Addresses / Second: " + data.data[2]/(data.data[3]/1000);
+         			document.getElementById('secondaryresponse').innerHTML = '';
+         		}
+         			else if (data.data[0]=='ADDRS') {
+         			document.getElementById('secondaryresponse').innerHTML = '<br>' + numberWithCommas(data.data[1]) + " Address Mined<br><br>" + String(parseTime(data.data[2]/1000)) + ' Elapsed';
+         			}
+         		}
+         
+         	}
+         }
+         
+         function parseTime(timeInSeconds) {
+         	if (timeInSeconds>60 && timeInSeconds<3600) {
+         		return String(round(timeInSeconds/60, 2)) + ' Minutes';
+         	}
+         	else if (timeInSeconds>3600 && timeInSeconds<86400) {
+         		return String(round(timeInSeconds/3600, 3)) + ' Hours';
+         	}
+         	else if (timeInSeconds>86400 && timeInSeconds<31536000) {
+         		return String(round(timeInSeconds/86400, 4)) + ' Days';
+         	}
+         	else if (timeInSeconds>31536000) {
+         		return String(numberWithCommas(round(timeInSeconds/31536000, 0))) + ' Years';
+         	}
+         	else {
+         		return String(round(timeInSeconds, 1)) + ' Seconds';
+         	}
+         }
+         
+         const numberWithCommas = (x) => {
+         			return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+         }
+      </script>
+   </body>
+</html>
